@@ -430,7 +430,7 @@ def redact_text(src):
     return ''.join(out)
 
 TEE3D = {   # proof of concept: product handle -> its print scan + shirt colour (preview only, not in the theme)
-    'tyson-vs-van-gogh-heavyweight-tee': '#F2CF3C',
+    'tyson-vs-van-gogh-heavyweight-tee': '#F3F1EC',
     'selfies-at-tiffanys-screen-print-on-white-t-shirt': '#F3F1EC',
     'neurological-head-heavyweight-tee': '#EFEDE6',
     'singin-in-the-acid-rain-heavyweight-tee-limited-edition': '#E9E6DC',

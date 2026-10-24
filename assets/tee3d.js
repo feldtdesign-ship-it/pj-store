@@ -38,6 +38,7 @@
   }
   paint(null, 1);
   var shade = new THREE.TextureLoader().load(el.getAttribute('data-shade'));
+  shade.flipY = false;   // baked in the model's UV space, which follows the glTF convention
   var mesh = null, aspect = 1;
   new THREE.GLTFLoader().load(el.getAttribute('data-model'), function (gl) {
     var src = null; gl.scene.traverse(function (o) { if (o.isMesh && !src) src = o; });
@@ -60,7 +61,7 @@
     }
     g.setIndex(fr.concat(bk, inner)); g.clearGroups();
     g.addGroup(0, fr.length, 0); g.addGroup(fr.length, bk.length, 1); g.addGroup(fr.length + bk.length, inner.length, 2);
-    var fab = { roughness: 0.95, metalness: 0, aoMap: shade, aoMapIntensity: 1.0 };
+    var fab = { roughness: 0.95, metalness: 0, aoMap: shade, aoMapIntensity: 0.9 };
     var mFront = new THREE.MeshStandardMaterial(Object.assign({ map: frontTex }, fab));
     var mBack = new THREE.MeshStandardMaterial(Object.assign({ color: new THREE.Color(colour) }, fab));
     var mIn = new THREE.MeshStandardMaterial({ color: new THREE.Color(colour).multiplyScalar(0.72), roughness: 1, side: THREE.BackSide });
