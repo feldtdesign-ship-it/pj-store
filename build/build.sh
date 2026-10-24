@@ -4,4 +4,4 @@
 cd "$(dirname "$0")" || exit 1
 PY="${PY:-python3}"
 [ "$1" = "--fresh" ] && ./fetch_data.sh
-"$PY" render.py && ./make_card.sh
+"$PY" render.py --mockup && ./make_card.sh

@@ -7,6 +7,7 @@
 
   /* ---------- money ---------- */
   function money(cents) {
+    if (PJ.redact) return '<span class="rx"></span>';
     var fmt = PJ.moneyFormat || '${{amount}}';
     var n = (cents / 100);
     var fixed = n.toFixed(2);

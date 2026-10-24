@@ -17,6 +17,8 @@ DATA = HERE / 'data'
 PREFIX = '/pj-store'
 SITE = 'https://feldtdesign-ship-it.github.io'
 PER_PAGE = 24
+MOCKUP = '--mockup' in sys.argv   # public mock-up: every price withheld, tag on every page
+RX = '<span class="rx" title="Price withheld in this mock-up"></span>'
 for i, a in enumerate(sys.argv):
     if a == '--prefix':
         PREFIX = sys.argv[i + 1]
@@ -266,6 +268,8 @@ THEME_SETTINGS['favicon'] = None
 
 # ----------------------------------------------------------------------------- filters
 def money(c, fmt=None):
+    if MOCKUP:
+        return RX
     try:
         v = int(c) / 100.0
     except Exception:
@@ -273,14 +277,23 @@ def money(c, fmt=None):
     return '${:,.2f}'.format(v)
 
 def money_without_trailing_zeros(c):
+    if MOCKUP:
+        return RX
     s = money(c)
     return s[:-3] if s.endswith('.00') else s
 
 def money_with_currency(c):
-    return money(c) + ' USD'
+    return RX if MOCKUP else money(c) + ' USD'
 
 def money_without_currency(c):
-    return money(c)[1:]
+    return '' if MOCKUP else money(c)[1:]
+
+def scrub_prices(obj):
+    if isinstance(obj, dict):
+        return {k: (0 if k in ('price', 'compare_at_price', 'price_min', 'price_max') else scrub_prices(v)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [scrub_prices(x) for x in obj]
+    return obj
 
 def image_src(obj):
     if isinstance(obj, dict):
@@ -386,7 +399,44 @@ def t(key, **kw):
 def to_json(obj):
     if isinstance(obj, Undefined):
         return 'null'
+    if MOCKUP:
+        obj = scrub_prices(obj)
     return json.dumps(obj, ensure_ascii=False, default=str)
+
+MOCKUP_TAG = '<div class="mockup-tag" role="note">Mock-up · prices withheld · not the live store</div>'
+MOCKUP_CSS = '''
+/* mock-up only (preview build) */
+.rx{display:inline-block;width:3.4em;height:.72em;background:var(--ink);vertical-align:-.02em;opacity:.9;border-radius:1px}
+.show .rx{background:var(--white)}
+.mockup-tag{position:fixed;left:16px;bottom:16px;z-index:80;background:var(--platform);color:var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:9px 12px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+@media(max-width:700px){.mockup-tag{left:8px;bottom:8px;font-size:10px;padding:7px 10px}}
+'''
+
+def redact_text(src):
+    """Replace $ amounts in visible text (not inside tags, scripts or styles)."""
+    parts = re.split(r'(<[^>]*>)', src)
+    skip = False
+    out = []
+    for part in parts:
+        if part.startswith('<'):
+            low = part[:8].lower()
+            if low.startswith('<script') or low.startswith('<style'):
+                skip = True
+            elif low.startswith('</script') or low.startswith('</style'):
+                skip = False
+            out.append(part)
+        else:
+            out.append(part if skip else re.sub(r'\$\s?\d[\d,]*(?:\.\d{2})?', RX, part))
+    return ''.join(out)
+
+def finalize(out):
+    out = out.replace('preview: false,', 'preview: true,' + (' redact: true,' if MOCKUP else ''))
+    if MOCKUP:
+        out = re.sub(r'data-price="\d+"', 'data-price="0"', out)
+        out = redact_text(out)
+        out = out.replace('</title>', ' · mock-up</title>', 1)
+        out = out.replace('</body>', MOCKUP_TAG + '\n</body>')
+    return out
 
 def handleize(s):
     return re.sub(r'[^a-z0-9]+', '-', str(s).lower()).strip('-')
@@ -596,8 +646,7 @@ def render_template(tname, g):
                                   tj['sections'][sid].get('blocks'), tj['sections'][sid].get('block_order'), i)
                    for i, sid in enumerate(tj['order']))
     G['content_for_layout'] = body
-    out = layout_template(tj.get('layout', 'theme')).render()
-    return out.replace('preview: false,', 'preview: true,')
+    return finalize(layout_template(tj.get('layout', 'theme')).render())
 
 def write(rel, content):
     p = STORE / rel
@@ -612,7 +661,8 @@ def build():
     for f in (THEME / 'assets').iterdir():
         if f.name.endswith('.liquid'):
             G.clear(); G.update(BASE)
-            write(f'assets/{f.name[:-7]}', env.from_string(f.read_text(encoding='utf-8')).render())
+            css = env.from_string(f.read_text(encoding='utf-8')).render()
+            write(f'assets/{f.name[:-7]}', css + (MOCKUP_CSS if MOCKUP else ''))
         else:
             shutil.copy2(f, adir / f.name)
     count = 0
