@@ -429,6 +429,34 @@ def redact_text(src):
             out.append(part if skip else re.sub(r'\$\s?\d[\d,]*(?:\.\d{2})?', RX, part))
     return ''.join(out)
 
+TEE3D = {   # proof of concept: product handle -> its print scan + shirt colour (preview only, not in the theme)
+    'tyson-vs-van-gogh-heavyweight-tee': '#F2CF3C',
+    'selfies-at-tiffanys-screen-print-on-white-t-shirt': '#F3F1EC',
+    'neurological-head-heavyweight-tee': '#EFEDE6',
+    'singin-in-the-acid-rain-heavyweight-tee-limited-edition': '#E9E6DC',
+}
+TEE3D_SCRIPTS = ('<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>'
+                 '<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>'
+                 '<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>'
+                 '<script src="{prefix}/assets/tee3d.js"></script>')
+TEE3D_CSS = '''
+/* 3D tee proof of concept (preview build) */
+.tee3d{position:relative;background:var(--paper);aspect-ratio:1/1;margin-bottom:12px;overflow:hidden;cursor:grab}
+.tee3d:active{cursor:grabbing}
+.tee3d canvas{display:block;width:100%!important;height:100%!important}
+.tee3d-lbl{position:absolute;left:12px;top:12px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);z-index:2;pointer-events:none}
+.tee3d-loading{top:auto;bottom:12px}
+'''
+
+def inject_tee3d(out, handle):
+    colour = TEE3D[handle]
+    box = (f'<div class="tee3d" data-tee3d data-model="{PREFIX}/assets/3d/tee.glb" data-shade="{PREFIX}/assets/3d/shade.jpg" '
+           f'data-art="{PREFIX}/assets/3d/art/{handle}.jpg" data-color="{colour}">'
+           f'<span class="tee3d-lbl">3D proof of concept · drag to turn</span>'
+           f'<span class="tee3d-lbl tee3d-loading" data-tee3d-loading>Loading the tee…</span></div>')
+    out = out.replace('<div class="media-main"', box + '<div class="media-main"', 1)
+    return out.replace('</body>', TEE3D_SCRIPTS.format(prefix=PREFIX) + '\n</body>', 1)
+
 def finalize(out):
     out = out.replace('preview: false,', 'preview: true,' + (' redact: true,' if MOCKUP else ''))
     if MOCKUP:
@@ -662,7 +690,7 @@ def build():
         if f.name.endswith('.liquid'):
             G.clear(); G.update(BASE)
             css = env.from_string(f.read_text(encoding='utf-8')).render()
-            write(f'assets/{f.name[:-7]}', css + (MOCKUP_CSS if MOCKUP else ''))
+            write(f'assets/{f.name[:-7]}', css + (MOCKUP_CSS if MOCKUP else '') + TEE3D_CSS)
         else:
             shutil.copy2(f, adir / f.name)
     count = 0
@@ -678,7 +706,10 @@ def build():
         pool = [x for x in (c['products'] if c else PRODUCTS) if x['handle'] != p['handle']][:4]
         g = page_globals('product', p['url'], p['title'], strip_tags(p['description'])[:160], product=p, page_image=p['featured_image'],
                          recommendations={'performed': True, 'products_count': len(pool), 'products': pool, 'intent': 'related'})
-        write(f"products/{p['handle']}.html", render_template('product', g)); count += 1
+        html_out = render_template('product', g)
+        if p['handle'] in TEE3D:
+            html_out = inject_tee3d(html_out, p['handle'])
+        write(f"products/{p['handle']}.html", html_out); count += 1
     # collections (paginated)
     for c in colls:
         pages = max(1, math.ceil(len(c['products']) / PER_PAGE))
