@@ -61,10 +61,10 @@
     }
     g.setIndex(fr.concat(bk, inner)); g.clearGroups();
     g.addGroup(0, fr.length, 0); g.addGroup(fr.length, bk.length, 1); g.addGroup(fr.length + bk.length, inner.length, 2);
-    var fab = { roughness: 0.95, metalness: 0, aoMap: shade, aoMapIntensity: 0.9 };
+    var fab = { roughness: 0.95, metalness: 0, aoMap: shade, aoMapIntensity: 0.9, side: THREE.DoubleSide };
     var mFront = new THREE.MeshStandardMaterial(Object.assign({ map: frontTex }, fab));
     var mBack = new THREE.MeshStandardMaterial(Object.assign({ color: new THREE.Color(colour) }, fab));
-    var mIn = new THREE.MeshStandardMaterial({ color: new THREE.Color(colour).multiplyScalar(0.72), roughness: 1, side: THREE.BackSide });
+    var mIn = new THREE.MeshStandardMaterial({ color: new THREE.Color(colour).multiplyScalar(0.72), roughness: 1, side: THREE.DoubleSide });
     mesh = new THREE.Mesh(g, [mFront, mBack, mIn]);
     mesh.position.set(-(bb.max.x + bb.min.x) / 2, -(bb.max.y + bb.min.y) / 2, -(bb.max.z + bb.min.z) / 2);
     scene.add(mesh);
