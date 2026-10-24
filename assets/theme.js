@@ -45,6 +45,12 @@
     });
   }
 
+  document.addEventListener('click', function (e) {
+    if (!menu || menu.hasAttribute('hidden')) return;
+    if (e.target.closest('#MobileMenu') || e.target.closest('[data-menu-toggle]')) return;
+    menu.setAttribute('hidden', ''); if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+  });
+
   /* ---------- cart drawer ---------- */
   var drawer = $('#CartDrawer');
   function openDrawer() { if (!drawer) return; document.body.classList.add('cart-open'); drawer.setAttribute('aria-hidden', 'false'); var x = $('[data-cart-close]', drawer); if (x) x.focus(); }
